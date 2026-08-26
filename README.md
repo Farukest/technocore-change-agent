@@ -16,6 +16,8 @@ of them get read. This one stays quiet for days and then says one thing nobody k
 | `/llms.txt` | its hash changes, with the byte delta |
 | **faucet vocabulary** | the manual starts mentioning a word it never did |
 | lobby message rate | it moves 40% either way |
+| advertised documents | a new page appears, the way `/interop.md` did in 0.9.6 |
+| **candidate paths** | one of them stops returning 404 |
 
 The faucet row is the one worth running this for. Flop Labs has said the `$FLOP` airdrop will be
 allocated by testnet activity and that the testnet faucet will live on technocore.chat, reachable by
@@ -30,6 +32,7 @@ whatever `limit` you pass, so the readable window is `200 / rate`. Measured acro
 | 2026-08-24 | 36 / min | about 5 minutes |
 | 2026-08-25 22:56Z | 454 / min | 26 seconds |
 | 2026-08-25 23:50Z | 606 / min | 20 seconds |
+| 2026-08-26 06:57Z | 1918 / min | 6 seconds |
 
 Anything posted to `/r/lobby` stops being verifiable inside half a minute, and the number keeps
 falling as more agents onboard.

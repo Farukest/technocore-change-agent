@@ -6,7 +6,22 @@
 const crypto = require("node:crypto");
 
 const BASE = "https://technocore.chat";
-const FAUCET_WORDS = /\b(faucet|testnet|airdrop|claim|token|mint|drip)\b/gi;
+const FAUCET_WORDS = /\b(faucet|testnet|airdrop|claim|token|mint|drip|balance|allowance)\b/gi;
+
+// Paths the faucet could plausibly land on. Cheap to check, and the point is to
+// notice the day one of them stops returning 404 rather than to guess right.
+const CANDIDATES = [
+  "/faucet",
+  "/testnet",
+  "/token",
+  "/claim",
+  "/drip",
+  "/balance",
+  "/faucet.md",
+  "/testnet.md",
+  "/token.md",
+  "/.well-known/faucet.json",
+];
 
 async function get(path, timeoutMs = 20000) {
   const controller = new AbortController();
@@ -19,6 +34,25 @@ async function get(path, timeoutMs = 20000) {
     return { status: response.status, body: await response.text() };
   } finally {
     clearTimeout(timer);
+  }
+}
+
+async function status(path) {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try {
+      const response = await fetch(`${BASE}${path}`, {
+        method: "HEAD",
+        headers: { connection: "close" },
+        signal: controller.signal,
+      });
+      return response.status;
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch {
+    return null;
   }
 }
 
@@ -47,6 +81,13 @@ function faucetHits(text) {
   return hits ? [...new Set(hits.map((h) => h.toLowerCase()))].sort() : [];
 }
 
+// Documents the service advertises. /interop.md appeared this way in 0.9.6, and
+// a faucet is at least as likely to arrive as a new page as a new capability.
+function docsIn(text) {
+  const found = text.match(/\/[a-z0-9][a-z0-9._-]*\.(md|json|txt)\b/gi) || [];
+  return [...new Set(found.map((d) => d.toLowerCase()))].sort();
+}
+
 async function snapshot({ sampleMs } = {}) {
   const [agentJson, llms, rooms] = await Promise.all([
     get("/.well-known/agent.json"),
@@ -65,6 +106,12 @@ async function snapshot({ sampleMs } = {}) {
   const roomCount = /of (\d+) rooms/.exec(roomsHeader);
   const roomCap = /cap (\d+)/.exec(roomsHeader);
 
+  const live = [];
+  for (const path of CANDIDATES) {
+    const code = await status(path);
+    if (code !== null && code !== 404) live.push(`${path}=${code}`);
+  }
+
   return {
     at: new Date().toISOString(),
     version: manifest.version || null,
@@ -72,6 +119,8 @@ async function snapshot({ sampleMs } = {}) {
     limits: manifest.limits || null,
     llmsHash: sha(llms.body),
     llmsBytes: llms.body.length,
+    docs: docsIn(`${llms.body} ${agentJson.body}`),
+    livePaths: live.sort(),
     roomsListed: roomCount ? Number(roomCount[1]) : null,
     roomsCap: roomCap ? Number(roomCap[1]) : null,
     faucet: [...new Set([...faucetHits(JSON.stringify(manifest)), ...faucetHits(llms.body)])],
@@ -79,4 +128,4 @@ async function snapshot({ sampleMs } = {}) {
   };
 }
 
-module.exports = { snapshot, get, sha, BASE };
+module.exports = { snapshot, get, status, sha, BASE, CANDIDATES };

@@ -43,6 +43,20 @@ function changes(prev, next) {
     });
   }
 
+  // A path that stops returning 404 is the loudest signal this agent can carry.
+  // A field the previous snapshot never carried is a baseline, not a change.
+  const wentLive = prev.livePaths ? next.livePaths.filter((p) => !prev.livePaths.includes(p)) : [];
+  if (wentLive.length) {
+    out.push({
+      key: `live:${wentLive.join(",")}`,
+      text: `a path that was 404 is now answering: ${wentLive.join(", ")}. Flop Labs has said the testnet faucet will live on this host and be reachable by agents holding a DID key`,
+    });
+  }
+
+  const newDocs = prev.docs ? next.docs.filter((d) => !prev.docs.includes(d)) : [];
+  if (newDocs.length) {
+    out.push({ key: `docs:${newDocs.join(",")}`, text: `new document advertised: ${newDocs.join(", ")}` });
+  }
   if (prev.llmsHash !== next.llmsHash) {
     const delta = next.llmsBytes - prev.llmsBytes;
     out.push({
