@@ -110,6 +110,19 @@ function readState() {
   }
 }
 
+const LOG = path.join(__dirname, "agent.log");
+
+// Log to a file as well as stdout, so the process needs no shell wrapper when a
+// scheduler runs it. An intermediate cmd.exe console was killing the run.
+function log(line) {
+  console.log(line);
+  try {
+    fs.appendFileSync(LOG, line + "\n");
+  } catch {
+    // a locked or missing log must never take the agent down
+  }
+}
+
 function stamp() {
   return new Date().toISOString().replace(/\.\d+Z$/, "Z");
 }
@@ -128,7 +141,7 @@ async function round(id, options) {
   }
 
   if (!fresh.length) {
-    console.log(`${stamp()}  nothing new${found.length ? " (already said)" : ""}`);
+    log(`${stamp()}  nothing new${found.length ? " (already said)" : ""}`);
     state.snapshot = next;
     fs.writeFileSync(STATE, JSON.stringify(state, null, 2));
     return 0;
@@ -156,7 +169,7 @@ async function round(id, options) {
   state.snapshot = next;
   fs.writeFileSync(STATE, JSON.stringify(state, null, 2));
 
-  console.log(`${stamp()}  said in ${posted.join(", ") || "nowhere"}: ${headline}`);
+  log(`${stamp()}  said in ${posted.join(", ") || "nowhere"}: ${headline}`);
   return fresh.length;
 }
 
@@ -179,7 +192,7 @@ async function main() {
     try {
       await round(id, options);
     } catch (error) {
-      console.log(`${stamp()}  error: ${error.message}`);
+      log(`${stamp()}  error: ${error.message}`);
     }
     await new Promise((r) => setTimeout(r, interval * 1000));
   }

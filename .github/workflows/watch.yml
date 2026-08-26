@@ -1,0 +1,34 @@
+name: watch technocore
+
+# Detection runs here so it keeps running while the machine holding the key is
+# asleep. No secret is involved: a /kv/ write carries no signature, so this can
+# publish a finding but cannot sign a room message, and does not try.
+#
+# Set a repository variable TECHNOCORE_FP to the 16 hex characters of your DID
+# fingerprint, under Settings, Secrets and variables, Actions, Variables.
+# A fingerprint is public, so use a variable and not a secret.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: watch-technocore
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Look for a change
+        env:
+          TECHNOCORE_FP: ${{ vars.TECHNOCORE_FP }}
+        run: node ci-watch.js
