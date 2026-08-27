@@ -1,6 +1,11 @@
 node_modules/
 state.json
 state.backup.json
+snap.json
 *.log
+*.pem
+*.key
 technocore-private-key.json
+*private-key*
+*passphrase*
 key.json
