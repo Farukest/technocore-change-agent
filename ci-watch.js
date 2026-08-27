@@ -61,7 +61,9 @@ function storable(snap) {
 
 const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const ED25519_PREFIX = Buffer.from([0xed, 0x01]);
-const ROOMS = ["lobby", "technocore", "meta"];
+// Overridable so the signing path can be exercised against a room you own
+// without writing a test line into the public ones.
+const ROOMS = (process.env.TECHNOCORE_ROOMS || "lobby,technocore,meta").split(",").map((r) => r.trim()).filter(Boolean);
 
 function base58btc(buffer) {
   let n = BigInt("0x" + Buffer.from(buffer).toString("hex"));
