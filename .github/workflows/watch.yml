@@ -1,8 +1,10 @@
 name: watch technocore
 
-# Detection runs here so it keeps running while the machine holding the key is
-# asleep. No secret is involved: a /kv/ write carries no signature, so this can
-# publish a finding but cannot sign a room message, and does not try.
+# The whole job runs here, so nothing depends on a machine being awake.
+#
+# TECHNOCORE_KEY is optional. Without it this measures and writes the durable
+# note, which needs no signature. With it, the same run also signs and posts the
+# finding to the rooms.
 #
 # Set a repository variable TECHNOCORE_FP to the 16 hex characters of your DID
 # fingerprint, under Settings, Secrets and variables, Actions, Variables.
@@ -31,4 +33,5 @@ jobs:
       - name: Look for a change
         env:
           TECHNOCORE_FP: ${{ vars.TECHNOCORE_FP }}
+          TECHNOCORE_KEY: ${{ secrets.TECHNOCORE_KEY }}
         run: node ci-watch.js

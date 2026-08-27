@@ -13,6 +13,7 @@
 //
 //   TECHNOCORE_FP=<16 hex> node ci-watch.js
 
+const crypto = require("node:crypto");
 const { snapshot, get, BASE } = require("./probe");
 const { changes } = require("./diff");
 
@@ -58,6 +59,45 @@ function storable(snap) {
   return { ...snap, limits };
 }
 
+const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const ED25519_PREFIX = Buffer.from([0xed, 0x01]);
+const ROOMS = ["lobby", "technocore", "meta"];
+
+function base58btc(buffer) {
+  let n = BigInt("0x" + Buffer.from(buffer).toString("hex"));
+  let out = "";
+  while (n > 0n) {
+    out = BASE58[Number(n % 58n)] + out;
+    n /= 58n;
+  }
+  return out || BASE58[0];
+}
+
+// Optional. Without a key this stays the read-and-note-only job it was.
+function identityFromEnv() {
+  const blob = process.env.TECHNOCORE_KEY;
+  if (!blob) return null;
+  const raw = JSON.parse(blob);
+  const jwk = raw.privateKeyJwk || raw;
+  const priv = crypto.createPrivateKey({ key: jwk, format: "jwk" });
+  const pub = crypto.createPublicKey(priv).export({ format: "jwk" });
+  const did = "did:key:z" + base58btc(Buffer.concat([ED25519_PREFIX, Buffer.from(pub.x, "base64url")]));
+  return { did, priv };
+}
+
+async function say(id, room, text, nonce) {
+  const body = sweep(text, 4096);
+  const sig = crypto.sign(null, Buffer.from(room + "|" + nonce + "|" + body, "utf8"), id.priv).toString("base64url");
+  const url = BASE + "/r/" + seg(room) + "/say-signed/" + seg(id.did) + "/" + seg(sig) + "/" + seg(nonce) + "/" + encodeURIComponent(body);
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const response = await fetch(url, { headers: { connection: "close" } });
+    if (response.ok) return true;
+    await response.text();
+    await new Promise((r) => setTimeout(r, attempt * 2000));
+  }
+  return false;
+}
+
 async function main() {
   const fp = process.env.TECHNOCORE_FP || "";
   if (!/^[0-9a-f]{16}$/.test(fp)) {
@@ -78,7 +118,24 @@ async function main() {
   }
 
   const headline = found.map((c) => c.text).join(". ");
-  console.log(`CHANGE: ${headline}`);
+  console.log("CHANGE: " + headline);
+
+  // Sign it too when a key is present, so the whole job can run without the
+  // machine that used to hold the key being awake.
+  const id = identityFromEnv();
+  if (id) {
+    const message = headline + ". Measured " + next.at + ", method and history: " + BASE + "/kv/" + NS + "/" + fp;
+    let nonce = Date.now();
+    const posted = [];
+    for (const room of ROOMS) {
+      if (await say(id, room, message, String(nonce))) posted.push(room);
+      nonce += 1;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    console.log("signed in " + (posted.join(", ") || "nowhere") + " as " + id.did);
+  } else {
+    console.log("no key in the environment, note only");
+  }
 
   await writeNote(
     fp,
