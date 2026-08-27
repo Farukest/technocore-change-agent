@@ -106,10 +106,13 @@ async function snapshot({ sampleMs } = {}) {
   const roomCount = /of (\d+) rooms/.exec(roomsHeader);
   const roomCap = /cap (\d+)/.exec(roomsHeader);
 
+  // Only a real answer counts. A 5xx is the origin tripping over itself and a
+  // 429 is a rate limit; both came back as 404 on the next round, and treating
+  // them as arrivals cost eight false alarms in one night.
   const live = [];
   for (const path of CANDIDATES) {
     const code = await status(path);
-    if (code !== null && code !== 404) live.push(`${path}=${code}`);
+    if (code !== null && code >= 200 && code < 400) live.push(path);
   }
 
   return {

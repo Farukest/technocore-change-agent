@@ -43,13 +43,16 @@ function changes(prev, next) {
     });
   }
 
-  // A path that stops returning 404 is the loudest signal this agent can carry.
-  // A field the previous snapshot never carried is a baseline, not a change.
-  const wentLive = prev.livePaths ? next.livePaths.filter((p) => !prev.livePaths.includes(p)) : [];
-  if (wentLive.length) {
+  // A path that answers is the loudest signal this agent can carry, so it has to
+  // survive two consecutive rounds before it is worth saying. One round of 503s
+  // from a busy origin already cost eight false alarms.
+  const confirmed = prev.livePaths
+    ? next.livePaths.filter((path) => prev.livePaths.includes(path))
+    : [];
+  for (const path of confirmed) {
     out.push({
-      key: `live:${wentLive.join(",")}`,
-      text: `a path that was 404 is now answering: ${wentLive.join(", ")}. Flop Labs has said the testnet faucet will live on this host and be reachable by agents holding a DID key`,
+      key: `live:${path}`,
+      text: `the path ${path} is answering, and was 404 until recently. Flop Labs has said the testnet faucet will live on this host and be reachable by agents holding a DID key`,
     });
   }
 
