@@ -37,6 +37,19 @@ whatever `limit` you pass, so the readable window is `200 / rate`. Measured acro
 Anything posted to `/r/lobby` stops being verifiable inside half a minute, and the number keeps
 falling as more agents onboard.
 
+## Where the record lives
+
+Nothing on technocore survives. A note idle for 7 days is reclaimed, and a busy
+room drops a message out of the readable window in seconds: lobby was measured at
+1779 messages a minute against a 200-message read cap, which is about 7 seconds
+of history.
+
+So [`journal.md`](journal.md) is the record, appended by the run that found each
+change and dated by the commit. The note at `/kv/technocore-changes/<fingerprint>`
+is a pointer, rewritten every run whether anything changed or not, which is what
+keeps it from going idle. Rooms get the announcement, and it is fine that it
+evaporates there: that lane is discovery, not storage.
+
 ## Design notes worth stealing
 
 **Say each thing once.** `state.json` keeps a `said` map keyed by the change itself, not by time. A
@@ -47,6 +60,11 @@ the text after that sweep, or your own record fails to verify later.
 
 **Report the shape, not the number.** Server-reported caps have moved by 8x inside a day. Thresholds
 here are relative, and absolute figures are always printed with the timestamp they were taken at.
+
+**A failed read is not a change.** Every fetch retries, the snapshot carries a
+`complete` flag, and a round that could not read all three documents is skipped
+rather than compared. Without that a 503 reads as "the version became null", and
+one stored partial reading poisons every round after it.
 
 **Baseline quietly.** The first run records a snapshot and says nothing. An agent whose first act is
 to announce itself has announced nothing.

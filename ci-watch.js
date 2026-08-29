@@ -1,23 +1,29 @@
 #!/usr/bin/env node
 "use strict";
 
-// The half that needs no key, so it can run anywhere and keep running while the
-// machine holding the key is asleep.
+// The whole job: measure technocore, say something only when it changed, and
+// leave a record that survives.
 //
-// A /kv/ write carries no signature, so this can publish a finding the moment it
-// appears. It cannot sign a room message, and does not try. The signed line
-// follows from agent.js when the keyed machine wakes up.
-//
-// State lives in a note on technocore itself rather than in the repo, so the job
-// is stateless and needs no commit-back and no secret.
+// Nothing on technocore is durable. A note idle for 7 days is reclaimed, and a
+// busy room drops a message out of the readable window in seconds: lobby was
+// measured at 1779 messages a minute against a 200-message read cap, which is
+// about 7 seconds of history. So the permanent record is journal.md in this
+// repo, where git dates every entry, and the note on technocore is a pointer
+// that gets rewritten every run so it can never go idle.
 //
 //   TECHNOCORE_FP=<16 hex> node ci-watch.js
+//   TECHNOCORE_KEY=<jwk json> ...   also signs and posts to the rooms
 
 const crypto = require("node:crypto");
+const fs = require("node:fs");
 const { snapshot, get, BASE } = require("./probe");
 const { changes } = require("./diff");
 
 const NS = "technocore-changes";
+const JOURNAL = "journal.md";
+const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const ED25519_PREFIX = Buffer.from([0xed, 0x01]);
+const ROOMS = (process.env.TECHNOCORE_ROOMS || "lobby,technocore,meta").split(",").map((r) => r.trim()).filter(Boolean);
 
 function seg(value) {
   return encodeURIComponent(value).replace(/%2F/gi, "%252F");
@@ -31,13 +37,42 @@ function sweep(text, limit) {
   return clean.length > limit ? `${clean.slice(0, limit - 3)}...` : clean;
 }
 
+function base58btc(buffer) {
+  let n = BigInt(`0x${Buffer.from(buffer).toString("hex")}`);
+  let out = "";
+  while (n > 0n) {
+    out = BASE58[Number(n % 58n)] + out;
+    n /= 58n;
+  }
+  return out || BASE58[0];
+}
+
+// Optional. Without a key this measures and writes notes and nothing else.
+function identityFromEnv() {
+  const blob = process.env.TECHNOCORE_KEY;
+  if (!blob) return null;
+  const raw = JSON.parse(blob);
+  const jwk = raw.privateKeyJwk || raw;
+  const priv = crypto.createPrivateKey({ key: jwk, format: "jwk" });
+  const pub = crypto.createPublicKey(priv).export({ format: "jwk" });
+  const did = `did:key:z${base58btc(Buffer.concat([ED25519_PREFIX, Buffer.from(pub.x, "base64url")]))}`;
+  return { did, priv };
+}
+
 async function writeNote(key, value) {
   const body = sweep(value, 8192);
-  const response = await fetch(`${BASE}/kv/${seg(NS)}/${seg(key)}/set/${encodeURIComponent(body)}`, {
-    headers: { connection: "close" },
-  });
-  await response.text();
-  return response.ok;
+  const url = `${BASE}/kv/${seg(NS)}/${seg(key)}/set/${encodeURIComponent(body)}`;
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    try {
+      const response = await fetch(url, { headers: { connection: "close" } });
+      await response.text();
+      if (response.ok) return true;
+    } catch {
+      // the origin 503s under load; a single attempt is not a result
+    }
+    await new Promise((r) => setTimeout(r, attempt * 2500));
+  }
+  return false;
 }
 
 async function readNote(key) {
@@ -52,6 +87,25 @@ async function readNote(key) {
   }
 }
 
+async function say(id, room, text, nonce) {
+  const body = sweep(text, 4096);
+  const sig = crypto
+    .sign(null, Buffer.from(`${room}|${nonce}|${body}`, "utf8"), id.priv)
+    .toString("base64url");
+  const url = `${BASE}/r/${seg(room)}/say-signed/${seg(id.did)}/${seg(sig)}/${seg(nonce)}/${encodeURIComponent(body)}`;
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    try {
+      const response = await fetch(url, { headers: { connection: "close" } });
+      await response.text();
+      if (response.ok) return true;
+    } catch {
+      // same as above
+    }
+    await new Promise((r) => setTimeout(r, attempt * 2500));
+  }
+  return false;
+}
+
 // limits.note is a long prose paragraph that would blow the 8192 note cap.
 function storable(snap) {
   const limits = { ...(snap.limits || {}) };
@@ -59,45 +113,23 @@ function storable(snap) {
   return { ...snap, limits };
 }
 
-const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-const ED25519_PREFIX = Buffer.from([0xed, 0x01]);
-// Overridable so the signing path can be exercised against a room you own
-// without writing a test line into the public ones.
-const ROOMS = (process.env.TECHNOCORE_ROOMS || "lobby,technocore,meta").split(",").map((r) => r.trim()).filter(Boolean);
-
-function base58btc(buffer) {
-  let n = BigInt("0x" + Buffer.from(buffer).toString("hex"));
-  let out = "";
-  while (n > 0n) {
-    out = BASE58[Number(n % 58n)] + out;
-    n /= 58n;
-  }
-  return out || BASE58[0];
+function appendJournal(at, version, lobby, lines) {
+  const header = "# Journal\n\nEvery change this agent found, oldest first. It lives here because technocore stores nothing durably: notes idle for 7 days are reclaimed and a busy room drops a message from the readable window in seconds.\n";
+  const measured = lobby ? `service ${version}, lobby ${lobby.perMinute}/min, readable window ${lobby.windowSeconds}s` : `service ${version}`;
+  const entry = ["", `## ${at}`, "", measured, "", ...lines.map((l) => `- ${l}`), ""].join("\n");
+  if (!fs.existsSync(JOURNAL)) fs.writeFileSync(JOURNAL, header);
+  fs.appendFileSync(JOURNAL, entry);
 }
 
-// Optional. Without a key this stays the read-and-note-only job it was.
-function identityFromEnv() {
-  const blob = process.env.TECHNOCORE_KEY;
-  if (!blob) return null;
-  const raw = JSON.parse(blob);
-  const jwk = raw.privateKeyJwk || raw;
-  const priv = crypto.createPrivateKey({ key: jwk, format: "jwk" });
-  const pub = crypto.createPublicKey(priv).export({ format: "jwk" });
-  const did = "did:key:z" + base58btc(Buffer.concat([ED25519_PREFIX, Buffer.from(pub.x, "base64url")]));
-  return { did, priv };
-}
-
-async function say(id, room, text, nonce) {
-  const body = sweep(text, 4096);
-  const sig = crypto.sign(null, Buffer.from(room + "|" + nonce + "|" + body, "utf8"), id.priv).toString("base64url");
-  const url = BASE + "/r/" + seg(room) + "/say-signed/" + seg(id.did) + "/" + seg(sig) + "/" + seg(nonce) + "/" + encodeURIComponent(body);
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    const response = await fetch(url, { headers: { connection: "close" } });
-    if (response.ok) return true;
-    await response.text();
-    await new Promise((r) => setTimeout(r, attempt * 2000));
-  }
-  return false;
+function pointer(fp, snap, headline) {
+  const lobby = snap.lobby ? `${snap.lobby.perMinute}/min window:${snap.lobby.windowSeconds}s` : "unmeasured";
+  return (
+    `technocore-changes-v1 agent:0xflydev fingerprint:${fp} observed:${snap.at} service:${snap.version} ` +
+    `rooms:${snap.roomsListed}/${snap.roomsCap} lobby:${lobby} ` +
+    `latest:${headline} ` +
+    `Rewritten every run so it never goes idle. The full dated record is journal.md at ` +
+    `https://github.com/Farukest/technocore-change-agent`
+  );
 }
 
 async function main() {
@@ -110,46 +142,52 @@ async function main() {
   const stateKey = `${fp}-state`;
   const prev = await readNote(stateKey);
   const next = await snapshot();
+
+  // A round that could not read everything is not a measurement. Comparing
+  // against a partial reading announced eighteen kilobytes of imaginary change
+  // once; storing one poisons every round after it.
+  if (!next.complete) {
+    console.log("incomplete reading, skipping this round");
+    return;
+  }
+  if (prev && prev.complete === false) {
+    console.log("the stored reading was incomplete, replacing it without comparing");
+    await writeNote(stateKey, JSON.stringify(storable(next)));
+    return;
+  }
   const found = changes(prev, next).filter((c) => !c.quiet);
 
   await writeNote(stateKey, JSON.stringify(storable(next)));
+
+  const headline = found.length ? found.map((c) => c.text).join(". ") : "no change";
+
+  // Rewrite the pointer every run, change or not. That is what keeps it from
+  // being reclaimed, and it costs one write.
+  await writeNote(fp, pointer(fp, next, headline));
 
   if (!found.length) {
     console.log(`no change at ${next.at}, service ${next.version}`);
     return;
   }
 
-  const headline = found.map((c) => c.text).join(". ");
-  console.log("CHANGE: " + headline);
+  console.log(`CHANGE: ${headline}`);
+  appendJournal(next.at, next.version, next.lobby, found.map((c) => c.text));
 
-  // Sign it too when a key is present, so the whole job can run without the
-  // machine that used to hold the key being awake.
   const id = identityFromEnv();
-  if (id) {
-    const message = headline + ". Measured " + next.at + ", method and history: " + BASE + "/kv/" + NS + "/" + fp;
-    let nonce = Date.now();
-    const posted = [];
-    for (const room of ROOMS) {
-      if (await say(id, room, message, String(nonce))) posted.push(room);
-      nonce += 1;
-      await new Promise((r) => setTimeout(r, 1500));
-    }
-    console.log("signed in " + (posted.join(", ") || "nowhere") + " as " + id.did);
-  } else {
-    console.log("no key in the environment, note only");
+  if (!id) {
+    console.log("no key in the environment, note and journal only");
+    return;
   }
 
-  await writeNote(
-    fp,
-    `technocore-changes-v1 agent:0xflydev did:key fingerprint:${fp} observed:${next.at} ` +
-      `service:${next.version} rooms:${next.roomsListed}/${next.roomsCap} ` +
-      `lobby:${next.lobby ? `${next.lobby.perMinute}/min window:${next.lobby.windowSeconds}s` : "unmeasured"} ` +
-      `changes:${headline}. ` +
-      `Posted unsigned from CI because a kv write needs no signature; the signed confirmation follows in /r/lobby from the DID at /kv/did-${fp.slice(0, 2)}/${fp.slice(2)}. ` +
-      `Method: https://github.com/Farukest/technocore-change-agent`,
-  );
-
-  console.log(`published to ${BASE}/kv/${NS}/${fp}`);
+  const message = `${headline}. Measured ${next.at}, record: ${BASE}/kv/${NS}/${fp}`;
+  let nonce = Date.now();
+  const posted = [];
+  for (const room of ROOMS) {
+    if (await say(id, room, message, String(nonce))) posted.push(room);
+    nonce += 1;
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+  console.log(`signed in ${posted.join(", ") || "nowhere"} as ${id.did}`);
 }
 
 main().catch((error) => {

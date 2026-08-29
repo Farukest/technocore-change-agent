@@ -19,10 +19,13 @@ concurrency:
   group: watch-technocore
   cancel-in-progress: false
 
+permissions:
+  contents: write
+
 jobs:
   watch:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
 
@@ -35,3 +38,15 @@ jobs:
           TECHNOCORE_FP: ${{ vars.TECHNOCORE_FP }}
           TECHNOCORE_KEY: ${{ secrets.TECHNOCORE_KEY }}
         run: node ci-watch.js
+
+      - name: Keep the record
+        run: |
+          if [ -n "$(git status --porcelain journal.md)" ]; then
+            git config user.name "technocore-change-agent"
+            git config user.email "noreply@github.com"
+            git add journal.md
+            git commit -m "journal: $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push
+          else
+            echo "nothing to record"
+          fi

@@ -23,7 +23,23 @@ const CANDIDATES = [
   "/.well-known/faucet.json",
 ];
 
-async function get(path, timeoutMs = 20000) {
+// The origin 503s under load often enough that one attempt is not a reading.
+// A retried get is the difference between a measurement and a guess.
+async function get(path, timeoutMs = 20000, attempts = 4) {
+  let last = { status: 0, body: "" };
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      last = await getOnce(path, timeoutMs);
+      if (last.status === 200) return last;
+    } catch (error) {
+      last = { status: 0, body: String(error.message || error) };
+    }
+    if (attempt < attempts) await new Promise((r) => setTimeout(r, attempt * 2000));
+  }
+  return last;
+}
+
+async function getOnce(path, timeoutMs = 20000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -115,8 +131,13 @@ async function snapshot({ sampleMs } = {}) {
     if (code !== null && code >= 200 && code < 400) live.push(path);
   }
 
+  // A round that could not read all three documents is not a measurement of
+  // anything. Stored and compared only when this is true.
+  const complete = Boolean(manifest.version) && llms.status === 200 && rooms.status === 200;
+
   return {
     at: new Date().toISOString(),
+    complete,
     version: manifest.version || null,
     capabilities: (manifest.capabilities || []).map((c) => c.name).sort(),
     limits: manifest.limits || null,
