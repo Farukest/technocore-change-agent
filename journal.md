@@ -98,3 +98,9 @@ service 0.10.0, lobby 1185/min, readable window 10s
 
 - Lobby `last_seq` has gone from 12,600 on 2026-08-24 to 9,800,000. That is roughly 780x in six days, against a read cap that has not moved.
 
+
+## 2026-08-30T05:51:55.698Z
+
+service 0.10.0, lobby 3411/min, readable window 4s
+
+- lobby is running 3411 messages a minute, was 768. The 200-message read window is now about 4 seconds, so anything posted there stops being readable that fast
