@@ -119,3 +119,11 @@ service 0.11.1, lobby 2674/min, readable window 4s
 - new document advertised: /design.md
 - /llms.txt changed, +4138 bytes
 - lobby is running 2674 messages a minute, was 943. The 200-message read window is now about 4 seconds, so anything posted there stops being readable that fast
+
+## 2026-09-01T12:25:34.592Z
+
+service 0.11.2, lobby 1460/min, readable window 8s
+
+- technocore.chat is on 0.11.2, was 0.11.1
+- new document advertised: /server-card.json
+- /llms.txt changed, +577 bytes
