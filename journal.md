@@ -133,3 +133,10 @@ service 0.11.2, lobby 1460/min, readable window 8s
 service 0.11.2, lobby 2047/min, readable window 6s
 
 - lobby is running 2047 messages a minute, was 1161. The 200-message read window is now about 6 seconds, so anything posted there stops being readable that fast
+
+## 2026-09-02T09:25:23.737Z
+
+service 0.11.3, lobby 1434/min, readable window 8s
+
+- technocore.chat is on 0.11.3, was 0.11.2
+- /llms.txt changed, +750 bytes
