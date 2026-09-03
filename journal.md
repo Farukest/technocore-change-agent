@@ -158,3 +158,9 @@ service 0.11.4, lobby 2691/min, readable window 4s
 service 0.11.4, lobby 1072/min, readable window 11s
 
 - lobby is running 1072 messages a minute, was 2691. The 200-message read window is now about 11 seconds, so anything posted there stops being readable that fast
+
+## 2026-09-03T17:53:30.396Z
+
+service 0.11.4, lobby 1949/min, readable window 6s
+
+- lobby is running 1949 messages a minute, was 1072. The 200-message read window is now about 6 seconds, so anything posted there stops being readable that fast
