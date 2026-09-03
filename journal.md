@@ -146,3 +146,9 @@ service 0.11.3, lobby 1434/min, readable window 8s
 service 0.11.4, lobby 1498/min, readable window 8s
 
 - technocore.chat is on 0.11.4, was 0.11.3
+
+## 2026-09-03T09:51:51.825Z
+
+service 0.11.4, lobby 2691/min, readable window 4s
+
+- lobby is running 2691 messages a minute, was 1219. The 200-message read window is now about 4 seconds, so anything posted there stops being readable that fast
