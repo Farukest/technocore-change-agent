@@ -187,3 +187,9 @@ service 0.11.4, lobby 2449/min, readable window 5s
 - /llms.txt changed, -2 bytes
 - room cap moved from 102400 to 163840
 - note cap moved from 3276800 to 5242880
+
+## 2026-09-04T14:08:16.982Z
+
+service 0.11.4, lobby 1247/min, readable window 10s
+
+- lobby is running 1247 messages a minute, was 2449. The 200-message read window is now about 10 seconds, so anything posted there stops being readable that fast
