@@ -216,3 +216,12 @@ service 0.12.0, lobby 2790/min, readable window 4s
 - technocore.chat is on 0.12.0, was 0.11.4
 - room cap moved from 81920 to 163840
 - note cap moved from 2621440 to 5242880
+
+## 2026-09-05T17:28:27.062Z
+
+service 0.11.4, lobby 1343/min, readable window 9s
+
+- technocore.chat is on 0.11.4, was 0.12.0
+- room cap moved from 163840 to 81920
+- note cap moved from 5242880 to 2621440
+- lobby is running 1343 messages a minute, was 2790. The 200-message read window is now about 9 seconds, so anything posted there stops being readable that fast
