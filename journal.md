@@ -208,3 +208,11 @@ service 0.11.4, lobby 2120/min, readable window 6s
 - technocore.chat is on 0.11.4, was 0.12.0
 - room cap moved from 163840 to 81920
 - note cap moved from 5242880 to 2621440
+
+## 2026-09-05T15:15:20.220Z
+
+service 0.12.0, lobby 2790/min, readable window 4s
+
+- technocore.chat is on 0.12.0, was 0.11.4
+- room cap moved from 81920 to 163840
+- note cap moved from 2621440 to 5242880
