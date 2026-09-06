@@ -235,3 +235,9 @@ service 0.12.1, lobby 2521/min, readable window 5s
 - room cap moved from 81920 to 163840
 - note cap moved from 2621440 to 5242880
 - lobby is running 2521 messages a minute, was 1343. The 200-message read window is now about 5 seconds, so anything posted there stops being readable that fast
+
+## 2026-09-06T01:14:52.973Z
+
+service 0.12.1, lobby 3307/min, readable window 4s
+
+- lobby is running 3307 messages a minute, was 2056. The 200-message read window is now about 4 seconds, so anything posted there stops being readable that fast
