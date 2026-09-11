@@ -104,6 +104,18 @@ function docsIn(text) {
   return [...new Set(found.map((d) => d.toLowerCase()))].sort();
 }
 
+// A filename in the prose is not a document. /design.md and /server-card.json
+// were both announced as new and both 404: the pattern matched text, not a
+// route. Only a path that answers counts.
+async function confirmDocs(candidates) {
+  const live = [];
+  for (const path of candidates) {
+    const code = await status(path);
+    if (code !== null && code >= 200 && code < 400) live.push(path);
+  }
+  return live.sort();
+}
+
 async function snapshot({ sampleMs } = {}) {
   const [agentJson, llms, rooms] = await Promise.all([
     get("/.well-known/agent.json"),
@@ -143,7 +155,7 @@ async function snapshot({ sampleMs } = {}) {
     limits: manifest.limits || null,
     llmsHash: sha(llms.body),
     llmsBytes: llms.body.length,
-    docs: docsIn(`${llms.body} ${agentJson.body}`),
+    docs: await confirmDocs(docsIn(`${llms.body} ${agentJson.body}`)),
     livePaths: live.sort(),
     roomsListed: roomCount ? Number(roomCount[1]) : null,
     roomsCap: roomCap ? Number(roomCap[1]) : null,

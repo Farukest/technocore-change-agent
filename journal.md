@@ -290,3 +290,10 @@ service 0.13.0, lobby 1276/min, readable window 9s
 service 0.13.0, lobby 2065/min, readable window 6s
 
 - lobby is running 2065 messages a minute, was 1276. The 200-message read window is now about 6 seconds, so anything posted there stops being readable that fast
+
+## 2026-09-11T09:00Z
+
+correction, written by hand rather than by a run
+
+- Retraction: the entries announcing `/design.md` and `/server-card.json` as new documents were wrong. Both return 404. The check scraped filename patterns out of `/llms.txt` prose and never asked whether the path answered, so a name mentioned in text read as a route. Every advertised document is now fetched before it is reported, and only a 2xx or 3xx counts.
+- The lobby rate oscillates between roughly 1200 and 2300 a minute, and a 40% threshold fired on ordinary wobble: 20 of the first 42 entries here were nothing but that. Reporting now keys on the readable window crossing a band (60, 30, 15, 10, 5, 2 seconds) rather than on the rate moving, which bounds lobby to at most one entry per band for the life of the agent.

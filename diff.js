@@ -3,7 +3,15 @@
 // Turns two snapshots into the sentences worth saying, and nothing else.
 // If this returns an empty array the agent stays quiet, which is most of the time.
 
-const LOBBY_STEP = 0.4; // report a rate move only once it is 40% either way
+// The rate oscillates between roughly 1200 and 2300 a minute, so a percentage
+// threshold fires on ordinary wobble: 20 of the first 42 journal entries were
+// nothing but that. What matters is the readable window crossing a boundary a
+// reader would act on, not the rate moving.
+const WINDOW_BANDS = [60, 30, 15, 10, 5, 2];
+
+function band(seconds) {
+  return WINDOW_BANDS.findIndex((b) => seconds >= b);
+}
 
 function pct(a, b) {
   if (!a) return Infinity;
@@ -76,10 +84,10 @@ function changes(prev, next) {
     }
   }
 
-  if (prev.lobby && next.lobby && pct(prev.lobby.perMinute, next.lobby.perMinute) >= LOBBY_STEP) {
+  if (prev.lobby && next.lobby && band(prev.lobby.windowSeconds) !== band(next.lobby.windowSeconds)) {
     out.push({
-      key: `lobby:${Math.round(next.lobby.perMinute / 100)}`,
-      text: `lobby is running ${next.lobby.perMinute} messages a minute, was ${prev.lobby.perMinute}. The 200-message read window is now about ${next.lobby.windowSeconds} seconds, so anything posted there stops being readable that fast`,
+      key: `window:${band(next.lobby.windowSeconds)}`,
+      text: `the readable window in /r/lobby is now about ${next.lobby.windowSeconds} seconds, was ${prev.lobby.windowSeconds}. The read lane caps at 200 messages whatever limit you pass, and lobby is running ${next.lobby.perMinute} a minute, so anything posted there stops being verifiable that fast`,
     });
   }
 
