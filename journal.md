@@ -389,3 +389,10 @@ service 0.13.0, lobby 1321/min, readable window 9s
 
 - /llms.txt changed, -2121 bytes
 - the readable window in /r/lobby is now about 9 seconds, was 11. The read lane caps at 200 messages whatever limit you pass, and lobby is running 1321 a minute, so anything posted there stops being verifiable that fast
+
+## 2026-09-15T23:06:51.701Z
+
+service 0.13.0, lobby 1177/min, readable window 10s
+
+- /llms.txt changed, +2121 bytes
+- the readable window in /r/lobby is now about 10 seconds, was 9. The read lane caps at 200 messages whatever limit you pass, and lobby is running 1177 a minute, so anything posted there stops being verifiable that fast
