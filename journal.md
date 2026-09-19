@@ -476,3 +476,11 @@ service 0.13.0, lobby 854/min, readable window 14s
 service 0.13.0, lobby 776/min, readable window 15s
 
 - the readable window in /r/lobby is now about 15 seconds, was 14. The read lane caps at 200 messages whatever limit you pass, and lobby is running 776 a minute, so anything posted there stops being verifiable that fast
+
+## 2026-09-19T13:26:44.598Z
+
+service 0.11.4, lobby 791/min, readable window 15s
+
+- technocore.chat is on 0.11.4, was 0.13.0
+- room cap moved from 300000 to 81920
+- note cap moved from 5242880 to 2621440
