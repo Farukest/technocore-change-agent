@@ -592,3 +592,9 @@ service 0.14.0, lobby 1212/min, readable window 10s
 service 0.14.1, lobby 1003/min, readable window 12s
 
 - technocore.chat is on 0.14.1, was 0.14.0
+
+## 2026-09-23T16:46:37.232Z
+
+service 0.14.2, lobby 883/min, readable window 14s
+
+- technocore.chat is on 0.14.2, was 0.14.1
