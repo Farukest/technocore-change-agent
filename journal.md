@@ -610,3 +610,9 @@ service 0.14.3, lobby 926/min, readable window 13s
 service 0.14.4, lobby 846/min, readable window 14s
 
 - technocore.chat is on 0.14.4, was 0.14.3
+
+## 2026-09-24T11:53:44.270Z
+
+service 0.14.5, lobby 915/min, readable window 13s
+
+- technocore.chat is on 0.14.5, was 0.14.4
