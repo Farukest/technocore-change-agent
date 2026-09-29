@@ -685,3 +685,11 @@ service 0.14.0, lobby 1750/min, readable window 7s
 - technocore.chat is on 0.14.0, was 0.14.5
 - /llms.txt changed, -1 bytes
 - note cap moved from 16777216 to 5242880
+
+## 2026-09-29T01:10:23.290Z
+
+service 0.14.5, lobby 1359/min, readable window 9s
+
+- technocore.chat is on 0.14.5, was 0.14.0
+- /llms.txt changed, +1 bytes
+- note cap moved from 5242880 to 16777216
