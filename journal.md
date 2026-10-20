@@ -921,3 +921,9 @@ service 0.14.5, lobby 1109/min, readable window 11s
 service 0.14.5, lobby 1610/min, readable window 7s
 
 - the readable window in /r/lobby is now about 7 seconds, was 11. The read lane caps at 200 messages whatever limit you pass, and lobby is running 1610 a minute, so anything posted there stops being verifiable that fast
+
+## 2026-10-20T14:25:59.234Z
+
+service 0.14.5, lobby 1224/min, readable window 10s
+
+- the readable window in /r/lobby is now about 10 seconds, was 7. The read lane caps at 200 messages whatever limit you pass, and lobby is running 1224 a minute, so anything posted there stops being verifiable that fast
